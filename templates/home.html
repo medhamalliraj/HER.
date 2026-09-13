@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HER. — Home</title>
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <meta name="theme-color" content="#db2777">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="HER.">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Floating Glassmorphic Toast Container -->
+    <div id="toast-container"></div>
+
+    <div class="dashboard-container">
+        <!-- Sidebar Navigation (Transforms to iOS dock on mobile screens) -->
+        <aside class="sidebar">
+            <h1 class="brand-logo">HER. <span>🎀</span></h1>
+            <nav class="nav-links">
+                <a href="{{ url_for('home') }}" class="active">🏠 Home</a>
+                <a href="{{ url_for('myspace') }}">💗 My Space</a>
+                <a href="{{ url_for('tracker') }}">📊 Tracker</a>
+                <a href="{{ url_for('aesthetics') }}">✨ My Aesthetics</a>
+            </nav>
+
+            <div class="nav-footer">
+                <a href="{{ url_for('export_backup') }}" class="export-vault-link">💾 Backup Vault (.md)</a>
+                <a href="{{ url_for('logout') }}" class="logout-btn">Log Out</a>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="header-card">
+                <div>
+                    <h2 id="dynamic-greeting">Welcome, {{ session.get('display_name', 'Medha') }} ♡</h2>
+                    <p class="date-str" id="formatted-date"></p>
+                </div>
+                <div class="clock" id="live-clock">00:00 AM</div>
+            </header>
+
+            <div class="dashboard-grid">
+                <!-- Today's Mood -->
+                <div class="card mood-card">
+                    <h3>🌸 Today's Mood</h3>
+                    <p class="card-subtitle">How are you feeling today?</p>
+                    <div class="mood-chips">
+                        {% set current_mood = record['mood'] if record and record['mood'] else '' %}
+                        {% for m in ['🌸 Happy', '☁️ Calm', '🥹 Emotional', '😴 Tired', '😌 Peaceful', '😤 Stressed', '✨ Excited', '🥀 Sad'] %}
+                            <button type="button" class="mood-btn {% if current_mood == m %}active{% endif %}" onclick="selectMood('{{ m }}')">
+                                {{ m }}
+                            </button>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- 🎧 Today's Soundtrack (Aesthetic iPhone Widget) -->
+                <div class="card soundtrack-widget-card">
+                    <div class="soundtrack-header-row">
+                        <div>
+                            <h3>🎧 Today's Soundtrack</h3>
+                            <p class="card-subtitle">Your personal aesthetic player.</p>
+                        </div>
+                        <button type="button" class="add-song-pill" onclick="openAddTrackModal()">+ Add Track</button>
+                    </div>
+
+                    <!-- iPhone Player Container -->
+                    <div class="ios-player">
+                        <div class="ios-top-bar">
+                            <span class="ios-badge">NOW PLAYING</span>
+                            <span class="ios-indicator">● READY</span>
+                        </div>
+
+                        <!-- Native Audio Controls with Rotating Vinyl -->
+                        <div class="ios-cover-section">
+                            <div class="ios-album-art" id="album-vinyl">
+                                <div class="vinyl-center"></div>
+                            </div>
+                            <div class="ios-track-info">
+                                <h4 id="ios-song-title">No track loaded</h4>
+                                <p id="ios-song-artist">Choose a song below</p>
+                            </div>
+                        </div>
+
+                        <div class="ios-scrubber-box">
+                            <input type="range" id="ios-seek" min="0" max="100" value="0" oninput="seekTrack(this.value)">
+                            <div class="ios-time-row">
+                                <span id="ios-time-current">0:00</span>
+                                <span id="ios-time-total">0:00</span>
+                            </div>
+                        </div>
+
+                        <div class="ios-controls">
+                            <button type="button" class="ios-btn" onclick="prevTrack()" title="Previous">⏮</button>
+                            <button type="button" class="ios-play-btn" id="ios-main-play-btn" onclick="togglePlayTrack()">▶</button>
+                            <button type="button" class="ios-btn" onclick="nextTrack()" title="Next">⏭</button>
+                        </div>
+                        
+                        <audio id="global-audio-element" preload="metadata"></audio>
+                    </div>
+
+                    <!-- Scrollable In-Card Playlist -->
+                    <div class="playlist-section-label">
+                        <span>📜 Scrollable Playlist ({{ soundtracks|length }} songs)</span>
+                    </div>
+
+                    <div class="ios-playlist-scroll" id="ios-playlist">
+                        {% for s in soundtracks %}
+                            <div class="ios-playlist-item" onclick="loadTrack({{ loop.index0 }})" id="track-item-{{ loop.index0 }}">
+                                <div class="playlist-meta">
+                                    <span class="playlist-track-name">🎵 {{ s['title'] }}</span>
+                                </div>
+                                <button type="button" class="delete-track-btn" onclick="event.stopPropagation(); deleteTrack({{ s['id'] }})" title="Remove">&times;</button>
+                            </div>
+                        {% else %}
+                            <p class="empty-playlist-hint">No songs yet. Click "+ Add Track" to upload your music files from your device!</p>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Today's Tasks -->
+                <div class="card tasks-card">
+                    <h3>✅ Today's Tasks</h3>
+                    <ul class="task-list">
+                        {% if tasks and tasks|length > 0 %}
+                            {% for task in tasks %}
+                                <li class="task-item {% if task['is_completed'] %}completed{% endif %}">
+                                    <label>
+                                        <input type="checkbox" onchange="toggleTask({{ task['id'] }})" {% if task['is_completed'] %}checked{% endif %}>
+                                        <span>{{ task['title'] }}</span>
+                                    </label>
+                                    <button type="button" class="item-delete-btn" onclick="deleteTask({{ task['id'] }})" title="Delete Task">&times;</button>
+                                </li>
+                            {% endfor %}
+                        {% else %}
+                            <li class="empty-notice">No tasks scheduled for today yet.</li>
+                        {% endif %}
+                    </ul>
+                    <form action="{{ url_for('add_task') }}" method="POST" class="task-form">
+                        <input type="text" name="title" placeholder="Add a new task..." required>
+                        <button type="submit">+</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Calendar Section with Dynamic Indicator Dots -->
+            <section class="calendar-section">
+                <div class="card calendar-card">
+                    <div class="calendar-header">
+                        <div>
+                            <h3>📅 Relive Memories & Calendar</h3>
+                            <p class="card-subtitle">Navigate months, inspect daily activities, or leave a note.</p>
+                        </div>
+                        <div class="calendar-nav-controls">
+                            <button type="button" class="cal-nav-btn" onclick="changeMonth(-1)">‹</button>
+                            <span class="calendar-month" id="calendar-month-label"></span>
+                            <button type="button" class="cal-nav-btn" onclick="changeMonth(1)">›</button>
+                        </div>
+                    </div>
+                    
+                    <div class="calendar-weekdays">
+                        <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+                    </div>
+
+                    <div class="calendar-grid" id="calendar-days"></div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Device Upload Only Modal -->
+    <div id="add-track-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeAddTrackModal()">&times;</span>
+            <h3 class="modal-date">Add to Soundtrack 🎧</h3>
+            <form action="{{ url_for('add_soundtrack') }}" method="POST" enctype="multipart/form-data" class="music-setup-form">
+                
+                <div class="input-stack">
+                    <label class="modal-note-label">Upload from Device (.mp3, .wav, .m4a)</label>
+                    <input type="file" name="audio_file" id="audio-file-picker" accept="audio/*" required onchange="autoFillMetaFromFile(this)">
+                </div>
+
+                <div class="meta-inputs-grid">
+                    <div class="input-stack">
+                        <label class="modal-note-label">Song Title</label>
+                        <input type="text" name="title" id="track-title-input" placeholder="Auto-filled from file">
+                    </div>
+                    <div class="input-stack">
+                        <label class="modal-note-label">Artist (Optional)</label>
+                        <input type="text" name="artist" id="track-artist-input" placeholder="e.g. Sai Abhyankkar">
+                    </div>
+                </div>
+
+                <button type="submit" class="save-note-btn">Save to Soundtrack ♡</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Calendar Memory Modal -->
+    <div id="memory-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeMemory()">&times;</span>
+            <h3 id="modal-date" class="modal-date">Date</h3>
+            <div id="modal-body" class="modal-body"></div>
+            
+            <div class="modal-note-section">
+                <label for="modal-note-input" class="modal-note-label">📝 Daily Note / Journal</label>
+                <textarea id="modal-note-input" rows="3" placeholder="Write a memory or note for this day..."></textarea>
+                <button type="button" class="save-note-btn" onclick="saveCurrentNote()">Save Note</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Floating Toast Notification Engine
+        function showToast(message) {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.innerHTML = `<span>✨</span><span>${message}</span>`;
+            container.appendChild(toast);
+
+            requestAnimationFrame(() => {
+                toast.classList.add('show');
+            });
+
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 2800);
+        }
+
+        const playlist = [
+            {% for s in soundtracks %}
+                {
+                    id: {{ s['id'] }},
+                    title: "{{ s['title'] | replace('"', '\\"') }}",
+                    src: "{{ s['audio_source'] }}"
+                },
+            {% endfor %}
+        ];
+
+        let currentIndex = 0;
+        let isPlaying = false;
+
+        const audio = document.getElementById('global-audio-element');
+        const playBtn = document.getElementById('ios-main-play-btn');
+        const titleEl = document.getElementById('ios-song-title');
+        const artistEl = document.getElementById('ios-song-artist');
+        const seek = document.getElementById('ios-seek');
+        const timeCurrent = document.getElementById('ios-time-current');
+        const timeTotal = document.getElementById('ios-time-total');
+        const vinyl = document.getElementById('album-vinyl');
+
+        function autoFillMetaFromFile(input) {
+            if (input.files && input.files[0]) {
+                const rawName = input.files[0].name.replace(/\.[^/.]+$/, "");
+                const titleInput = document.getElementById('track-title-input');
+                const artistInput = document.getElementById('track-artist-input');
+
+                if (rawName.includes('-')) {
+                    const parts = rawName.split('-');
+                    titleInput.value = parts[0].trim();
+                    artistInput.value = parts[1].trim();
+                } else {
+                    titleInput.value = rawName.replace(/_/g, ' ').trim();
+                }
+            }
+        }
+
+        function loadTrack(idx, autoPlay = true) {
+            if (!playlist || playlist.length === 0) return;
+            if (idx < 0) idx = playlist.length - 1;
+            if (idx >= playlist.length) idx = 0;
+
+            currentIndex = idx;
+            const song = playlist[currentIndex];
+
+            document.querySelectorAll('.ios-playlist-item').forEach(el => el.classList.remove('active-playing'));
+            const activeItem = document.getElementById(`track-item-${currentIndex}`);
+            if (activeItem) activeItem.classList.add('active-playing');
+
+            const parts = song.title.split('•');
+            titleEl.textContent = parts[0].trim();
+            artistEl.textContent = parts[1] ? parts[1].trim() : "Soundtrack";
+
+            audio.src = song.src;
+            if (autoPlay) {
+                audio.play().then(() => {
+                    isPlaying = true;
+                    playBtn.textContent = '⏸';
+                    vinyl.classList.add('spinning');
+                }).catch(() => {
+                    isPlaying = false;
+                    playBtn.textContent = '▶';
+                    vinyl.classList.remove('spinning');
+                });
+            } else {
+                isPlaying = false;
+                playBtn.textContent = '▶';
+                vinyl.classList.remove('spinning');
+            }
+        }
+
+        function togglePlayTrack() {
+            if (!playlist || playlist.length === 0) {
+                openAddTrackModal();
+                return;
+            }
+            if (!audio.src) {
+                loadTrack(0, true);
+                return;
+            }
+
+            if (audio.paused) {
+                audio.play();
+                isPlaying = true;
+                playBtn.textContent = '⏸';
+                vinyl.classList.add('spinning');
+            } else {
+                audio.pause();
+                isPlaying = false;
+                playBtn.textContent = '▶';
+                vinyl.classList.remove('spinning');
+            }
+        }
+
+        function prevTrack() { loadTrack(currentIndex - 1, true); }
+        function nextTrack() { loadTrack(currentIndex + 1, true); }
+
+        function seekTrack(val) {
+            if (audio && !isNaN(audio.duration)) {
+                audio.currentTime = (val / 100) * audio.duration;
+            }
+        }
+
+        if (audio) {
+            audio.addEventListener('timeupdate', () => {
+                if (!isNaN(audio.duration) && audio.duration > 0) {
+                    seek.value = (audio.currentTime / audio.duration) * 100;
+                    timeCurrent.textContent = formatTime(audio.currentTime);
+                    timeTotal.textContent = formatTime(audio.duration);
+                }
+            });
+            audio.addEventListener('ended', () => nextTrack());
+        }
+
+        function formatTime(secs) {
+            const m = Math.floor(secs / 60);
+            const s = Math.floor(secs % 60).toString().padStart(2, '0');
+            return `${m}:${s}`;
+        }
+
+        function deleteTrack(id) {
+            if (confirm("Remove this track from your soundtrack?")) {
+                fetch(`/delete-soundtrack/${id}`, { method: 'POST' })
+                    .then(() => {
+                        showToast("Track removed from soundtrack ♡");
+                        setTimeout(() => location.reload(), 400);
+                    });
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            if (playlist.length > 0) {
+                loadTrack(0, false);
+            }
+        });
+
+        function openAddTrackModal() { document.getElementById('add-track-modal').style.display = 'flex'; }
+        function closeAddTrackModal() { document.getElementById('add-track-modal').style.display = 'none'; }
+
+        // Live Clock & Greeting
+        function updateHeader() {
+            const now = new Date();
+            const hours = now.getHours();
+            let greeting = "Good evening";
+            if (hours >= 5 && hours < 12) greeting = "Good morning";
+            else if (hours >= 12 && hours < 17) greeting = "Good afternoon";
+
+            document.getElementById('dynamic-greeting').textContent = `${greeting}, {{ session.get('display_name', 'Medha') }} ♡`;
+            document.getElementById('formatted-date').textContent = now.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+            document.getElementById('live-clock').textContent = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+        }
+        setInterval(updateHeader, 1000);
+        updateHeader();
+
+        function selectMood(mood) {
+            fetch('/set-mood', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mood: mood })
+            }).then(() => {
+                showToast(`Mood logged as ${mood} ✨`);
+                setTimeout(() => location.reload(), 400);
+            });
+        }
+
+        function toggleTask(taskId) {
+            fetch(`/toggle-task/${taskId}`, { method: 'POST' }).then(() => location.reload());
+        }
+
+        function deleteTask(taskId) {
+            fetch(`/delete-task/${taskId}`, { method: 'POST' }).then(() => location.reload());
+        }
+
+        // Calendar Logic with Indicator Dots
+        let currentViewDate = new Date();
+        let selectedDateKey = '';
+
+        function changeMonth(delta) {
+            currentViewDate.setMonth(currentViewDate.getMonth() + delta);
+            renderCalendar();
+        }
+
+        function renderCalendar() {
+            const calendarDays = document.getElementById('calendar-days');
+            if (!calendarDays) return;
+            calendarDays.innerHTML = '';
+
+            const year = currentViewDate.getFullYear();
+            const month = currentViewDate.getMonth();
+            const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            document.getElementById('calendar-month-label').textContent = `${monthNames[month]} ${year}`;
+
+            const monthPrefix = `${year}-${String(month + 1).padStart(2, '0')}`;
+
+            fetch(`/api/memory-indicators/${monthPrefix}`)
+                .then(res => res.json())
+                .then(data => {
+                    const activeDates = new Set(data.active_dates || []);
+                    drawCalendarGrid(year, month, activeDates);
+                })
+                .catch(() => {
+                    drawCalendarGrid(year, month, new Set());
+                });
+        }
+
+        function drawCalendarGrid(year, month, activeDates) {
+            const calendarDays = document.getElementById('calendar-days');
+            calendarDays.innerHTML = '';
+
+            const firstDayIndex = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const realToday = new Date();
+            const isCurrentMonth = (realToday.getFullYear() === year && realToday.getMonth() === month);
+            const realTodayDate = realToday.getDate();
+
+            for (let i = 0; i < firstDayIndex; i++) {
+                const emptyCell = document.createElement('div');
+                emptyCell.classList.add('cal-day', 'empty-slot');
+                calendarDays.appendChild(emptyCell);
+            }
+
+            for (let d = 1; d <= daysInMonth; d++) {
+                const dayBox = document.createElement('div');
+                dayBox.classList.add('cal-day');
+                if (isCurrentMonth && d === realTodayDate) dayBox.classList.add('today');
+
+                const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                
+                const numSpan = document.createElement('span');
+                numSpan.textContent = d;
+                dayBox.appendChild(numSpan);
+
+                if (activeDates.has(dateKey)) {
+                    const dot = document.createElement('span');
+                    dot.classList.add('memory-dot');
+                    dayBox.appendChild(dot);
+                }
+
+                dayBox.onclick = () => openMemory(dateKey);
+                calendarDays.appendChild(dayBox);
+            }
+        }
+
+        function openMemory(dateStr) {
+            selectedDateKey = dateStr;
+            document.getElementById('modal-date').textContent = dateStr;
+            const body = document.getElementById('modal-body');
+            const noteInput = document.getElementById('modal-note-input');
+            noteInput.value = '';
+
+            fetch(`/api/memory/${dateStr}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (!data.found) {
+                        body.innerHTML = '<p class="modal-empty">No automated entries logged for this day.</p>';
+                    } else {
+                        const completedCount = data.tasks ? data.tasks.filter(t => t.done).length : 0;
+                        const totalTasks = data.tasks ? data.tasks.length : 0;
+
+                        body.innerHTML = `
+                            <div class="memory-item"><span class="memory-label">Mood</span><span class="memory-val">${data.mood || 'Not recorded'}</span></div>
+                            <div class="memory-item"><span class="memory-label">Soundtrack</span><span class="memory-val">${data.song_title ? data.song_title + ' — ' + data.song_artist : 'No song saved'}</span></div>
+                            <div class="memory-item"><span class="memory-label">Tasks Done</span><span class="memory-val">${completedCount} / ${totalTasks}</span></div>
+                        `;
+                        if (data.journal) noteInput.value = data.journal;
+                    }
+                    document.getElementById('memory-modal').style.display = 'flex';
+                });
+        }
+
+        function saveCurrentNote() {
+            const noteText = document.getElementById('modal-note-input').value;
+            if (!selectedDateKey) return;
+
+            fetch(`/api/memory/${selectedDateKey}/note`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ note: noteText })
+            }).then(() => {
+                closeMemory();
+                renderCalendar();
+                showToast(`Memory for ${selectedDateKey} saved ♡`);
+            });
+        }
+
+        function closeMemory() {
+            document.getElementById('memory-modal').style.display = 'none';
+        }
+
+        window.onclick = function(event) {
+            const modal = document.getElementById('memory-modal');
+            const trackModal = document.getElementById('add-track-modal');
+            if (event.target === modal) modal.style.display = 'none';
+            if (event.target === trackModal) trackModal.style.display = 'none';
+        };
+
+        renderCalendar();
+
+        // PWA Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').catch(() => {});
+            });
+        }
+    </script>
+</body>
+</html>

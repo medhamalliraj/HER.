@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HER. — Tracker</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar Navigation (No Music Player, No Log Out) -->
+        <aside class="sidebar">
+            <h1 class="brand-logo">HER. <span>🎀</span></h1>
+            <nav class="nav-links">
+                <a href="{{ url_for('home') }}">🏠 Home</a>
+                <a href="{{ url_for('myspace') }}">💗 My Space</a>
+                <a href="{{ url_for('tracker') }}" class="active">📊 Tracker</a>
+                <a href="{{ url_for('aesthetics') }}">✨ My Aesthetics</a>
+            </nav>
+
+            <div class="nav-footer">
+                <a href="{{ url_for('export_backup') }}" class="export-vault-link">💾 Backup Vault (.md)</a>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="header-card">
+                <div>
+                    <h2>My Trackers 📊</h2>
+                    <p class="date-str">Building consistency in body, mind, and finances.</p>
+                </div>
+                <span class="tracker-header-badge">{{ today }}</span>
+            </header>
+
+            <!-- Automated Monthly Insights Bar -->
+            <section class="insights-banner">
+                <div class="insight-pill">
+                    <span class="insight-label">📚 Total Focus This Month</span>
+                    <span class="insight-val">{{ total_study }} Hours</span>
+                </div>
+                <div class="insight-pill">
+                    <span class="insight-label">🌙 Avg Sleep Duration</span>
+                    <span class="insight-val">{{ "%.1f"|format(avg_sleep) }} Hours/Night</span>
+                </div>
+                <div class="insight-pill">
+                    <span class="insight-label">💰 Top Spending Category</span>
+                    <span class="insight-val">{{ top_category }}</span>
+                </div>
+            </section>
+
+            <div class="dashboard-grid">
+                <!-- 🌱 Daily Habits -->
+                <div class="card habit-card">
+                    <h3>🌱 Daily Habits</h3>
+                    <p class="card-subtitle">Check off your daily self-care rituals.</p>
+                    <ul class="task-list">
+                        {% for h in habits %}
+                            <li class="task-item {% if h['is_done'] %}completed{% endif %}">
+                                <label>
+                                    <input type="checkbox" onchange="toggleHabit({{ h['id'] }})" {% if h['is_done'] %}checked{% endif %}>
+                                    <span>{{ h['habit_name'] }}</span>
+                                </label>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+
+                <!-- 📚 Study & 🌙 Sleep Logger -->
+                <div class="card study-sleep-card">
+                    <h3>📚 Study & 🌙 Sleep Logger</h3>
+                    <p class="card-subtitle">Keep track of your deep focus and rest.</p>
+                    
+                    <form action="{{ url_for('update_study_sleep') }}" method="POST" class="logger-form">
+                        <div class="log-field">
+                            <label>📚 Focus Hours Today</label>
+                            <input type="number" step="0.5" name="study_hours" value="{{ record['study_hours'] if record else 0 }}" min="0" max="24">
+                        </div>
+                        <div class="log-field">
+                            <label>🌙 Sleep Duration (Hours)</label>
+                            <input type="number" step="0.5" name="sleep_hours" value="{{ record['sleep_hours'] if record else 0 }}" min="0" max="24">
+                        </div>
+                        <div class="log-field">
+                            <label>Sleep Quality</label>
+                            <select name="sleep_quality" class="styled-select">
+                                <option value="Peaceful ☁️" {% if record and record['sleep_quality'] == 'Peaceful ☁️' %}selected{% endif %}>Peaceful ☁️</option>
+                                <option value="Deep & Rested ✨" {% if record and record['sleep_quality'] == 'Deep & Rested ✨' %}selected{% endif %}>Deep & Rested ✨</option>
+                                <option value="Restless 🥱" {% if record and record['sleep_quality'] == 'Restless 🥱' %}selected{% endif %}>Restless 🥱</option>
+                                <option value="Light 😴" {% if record and record['sleep_quality'] == 'Light 😴' %}selected{% endif %}>Light 😴</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="tracker-submit-btn">Update Log</button>
+                    </form>
+                </div>
+
+                <!-- 💰 Spending Tracker with Delete (×) -->
+                <div class="card expense-card">
+                    <div class="expense-header">
+                        <h3>💰 Spending Tracker</h3>
+                        <span class="expense-total">Total: ₹{{ "%.2f"|format(total_spent) }}</span>
+                    </div>
+                    <p class="card-subtitle">Log purchases and track monthly expenses.</p>
+
+                    <form action="{{ url_for('add_expense') }}" method="POST" class="expense-add-form">
+                        <input type="text" name="title" placeholder="Item name..." required>
+                        <input type="number" step="1" name="amount" placeholder="₹ Amount" required>
+                        <select name="category" class="styled-select">
+                            <option value="Food ☕">Food ☕</option>
+                            <option value="Shopping 🛍️">Shopping 🛍️</option>
+                            <option value="Travel 🚗">Travel 🚗</option>
+                            <option value="Education 📚">Education 📚</option>
+                            <option value="Self-Care 🌸">Self-Care 🌸</option>
+                            <option value="Other ✨">Other ✨</option>
+                        </select>
+                        <button type="submit">+</button>
+                    </form>
+
+                    <ul class="expense-list">
+                        {% for e in expenses %}
+                            <li class="expense-item">
+                                <div>
+                                    <span class="expense-name">{{ e['title'] }}</span>
+                                    <span class="tag-pill">{{ e['category'] }}</span>
+                                </div>
+                                <div class="expense-actions-row">
+                                    <span class="expense-amt">₹{{ "%.2f"|format(e['amount']) }}</span>
+                                    <button type="button" class="item-delete-btn" onclick="deleteExpense({{ e['id'] }})" title="Delete Expense">&times;</button>
+                                </div>
+                            </li>
+                        {% else %}
+                            <li class="empty-notice">No expenses recorded for this month yet.</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        function toggleHabit(habitId) {
+            fetch(`/toggle-habit/${habitId}`, { method: 'POST' }).then(() => location.reload());
+        }
+
+        function deleteExpense(expenseId) {
+            fetch(`/delete-expense/${expenseId}`, { method: 'POST' }).then(() => location.reload());
+        }
+    </script>
+</body>
+</html>

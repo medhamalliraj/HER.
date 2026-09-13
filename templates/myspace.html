@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HER. — My Space</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar Navigation (Transforms to iOS dock on mobile screens) -->
+        <aside class="sidebar">
+            <h1 class="brand-logo">HER. <span>🎀</span></h1>
+            <nav class="nav-links">
+                <a href="{{ url_for('home') }}">🏠 Home</a>
+                <a href="{{ url_for('myspace') }}" class="active">💗 My Space</a>
+                <a href="{{ url_for('tracker') }}">📊 Tracker</a>
+                <a href="{{ url_for('aesthetics') }}">✨ My Aesthetics</a>
+            </nav>
+
+            <div class="nav-footer">
+                <a href="{{ url_for('export_backup') }}" class="export-vault-link">💾 Backup Vault (.md)</a>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="header-card">
+                <div>
+                    <h2>My Private Sanctuary 💗</h2>
+                    <p class="date-str">Your living identity, dreams, and personal reflections.</p>
+                </div>
+            </header>
+
+            <div class="dashboard-grid">
+                <!-- Living Profile / About Me Card -->
+                <div class="card about-me-card">
+                    <div class="about-card-header">
+                        <div>
+                            <h3>👩🏻 About Me & Living Identity</h3>
+                            <p class="card-subtitle">Your personal era and cherished traits.</p>
+                        </div>
+                        <button type="button" class="edit-pill-btn" onclick="toggleEditProfile()">Edit Profile ✎</button>
+                    </div>
+
+                    <!-- Display Mode -->
+                    <div id="about-display-section" class="about-traits-grid">
+                        <div class="trait-row">
+                            <span class="trait-label">✨ Current Era</span>
+                            <span class="trait-value">{{ about['current_era'] or 'Soft Growth & Quiet Confidence ✨' }}</span>
+                        </div>
+                        <div class="trait-row">
+                            <span class="trait-label">🎂 Birthday</span>
+                            <span class="trait-value">{{ about['birthday'] or 'Not set yet' }}</span>
+                        </div>
+                        <div class="trait-row">
+                            <span class="trait-label">🎨 Favorite Color</span>
+                            <span class="trait-value">{{ about['fav_color'] or 'Blush & Emerald' }}</span>
+                        </div>
+                        <div class="trait-row">
+                            <span class="trait-label">🎵 Anthem / Fav Song</span>
+                            <span class="trait-value">{{ about['fav_song'] or 'Favorite melody' }}</span>
+                        </div>
+                        <div class="trait-row">
+                            <span class="trait-label">💫 Personality</span>
+                            <span class="trait-value">{{ about['personality'] or 'Thoughtful, creative & driven' }}</span>
+                        </div>
+                        <div class="trait-row">
+                            <span class="trait-label">🌿 Core Values</span>
+                            <span class="trait-value">{{ about['values_text'] or 'Authenticity, growth, warmth' }}</span>
+                        </div>
+                        <div class="trait-row">
+                            <span class="trait-label">🌸 Things I Love</span>
+                            <span class="trait-value">{{ about['things_i_love'] or 'Reading, design, quiet coffee mornings' }}</span>
+                        </div>
+                        <div class="trait-row">
+                            <span class="trait-label">🥀 Things I Dislike</span>
+                            <span class="trait-value">{{ about['things_i_dislike'] or 'Inconsistency, loud clutter' }}</span>
+                        </div>
+                        <div class="trait-row">
+                            <span class="trait-label">☁️ What Brings Peace</span>
+                            <span class="trait-value">{{ about['what_makes_me_happy'] or 'Making progress & resting peacefully' }}</span>
+                        </div>
+                    </div>
+
+                    <!-- Edit Mode Form -->
+                    <form id="about-edit-section" action="{{ url_for('update_about_me') }}" method="POST" class="about-edit-form" style="display: none;">
+                        <div class="form-field-group">
+                            <label>Full / Preferred Name</label>
+                            <input type="text" name="full_name" value="{{ about['full_name'] or session.get('display_name', 'Medha') }}">
+                        </div>
+                        <div class="form-field-group">
+                            <label>Current Era / Theme</label>
+                            <input type="text" name="current_era" value="{{ about['current_era'] or '' }}" placeholder="e.g. Focus & Elegance">
+                        </div>
+                        <div class="form-field-group">
+                            <label>Birthday</label>
+                            <input type="text" name="birthday" value="{{ about['birthday'] or '' }}" placeholder="e.g. October 14">
+                        </div>
+                        <div class="form-field-group">
+                            <label>Favorite Color</label>
+                            <input type="text" name="fav_color" value="{{ about['fav_color'] or '' }}" placeholder="e.g. Soft Blush Pink">
+                        </div>
+                        <div class="form-field-group">
+                            <label>Favorite Song / Anthem</label>
+                            <input type="text" name="fav_song" value="{{ about['fav_song'] or '' }}" placeholder="e.g. Oorum Blood">
+                        </div>
+                        <div class="form-field-group">
+                            <label>Personality Traits</label>
+                            <input type="text" name="personality" value="{{ about['personality'] or '' }}" placeholder="e.g. Introverted, ambitious">
+                        </div>
+                        <div class="form-field-group">
+                            <label>Core Values</label>
+                            <input type="text" name="values_text" value="{{ about['values_text'] or '' }}" placeholder="e.g. Integrity, gentleness">
+                        </div>
+                        <div class="form-field-group">
+                            <label>Things I Love</label>
+                            <input type="text" name="things_i_love" value="{{ about['things_i_love'] or '' }}" placeholder="e.g. Chai, journaling">
+                        </div>
+                        <div class="form-field-group">
+                            <label>Things I Dislike</label>
+                            <input type="text" name="things_i_dislike" value="{{ about['things_i_dislike'] or '' }}" placeholder="e.g. Rush, noisy places">
+                        </div>
+                        <div class="form-field-group">
+                            <label>What Makes Me Truly Happy</label>
+                            <input type="text" name="what_makes_me_happy" value="{{ about['what_makes_me_happy'] or '' }}" placeholder="e.g. Achieving goals">
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="button" class="cancel-btn" onclick="toggleEditProfile()">Cancel</button>
+                            <button type="submit" class="save-btn">Save Identity ♡</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Bucket List Goals -->
+                <div class="card bucket-card">
+                    <div class="soundtrack-header-row">
+                        <div>
+                            <h3>🧳 Bucket List & Dreams</h3>
+                            <p class="card-subtitle">Lifetime milestones and small joys.</p>
+                        </div>
+                    </div>
+
+                    <ul class="task-list">
+                        {% if bucket_items and bucket_items|length > 0 %}
+                            {% for b in bucket_items %}
+                                <li class="task-item {% if b['progress'] == 100 %}completed{% endif %}">
+                                    <label>
+                                        <input type="checkbox" onchange="toggleBucket({{ b['id'] }})" {% if b['progress'] == 100 %}checked{% endif %}>
+                                        <span>{{ b['title'] }} <span class="tag-pill">{{ b['subtitle'] or 'Dream' }}</span></span>
+                                    </label>
+                                    <button type="button" class="item-delete-btn" onclick="deleteBucketItem({{ b['id'] }})" title="Remove Dream">&times;</button>
+                                </li>
+                            {% endfor %}
+                        {% else %}
+                            <li class="empty-notice">No bucket list dreams added yet. Dream big!</li>
+                        {% endif %}
+                    </ul>
+
+                    <form action="{{ url_for('add_bucket_item') }}" method="POST" class="task-form" style="margin-top: 14px;">
+                        <input type="text" name="title" placeholder="Add a bucket list aspiration..." required>
+                        <select name="tag" class="styled-select" style="max-width: 130px;">
+                            <option value="Personal 💗">Personal 💗</option>
+                            <option value="Travel ✈️">Travel ✈️</option>
+                            <option value="Career 🎓">Career 🎓</option>
+                            <option value="Experience 🌸">Experience 🌸</option>
+                        </select>
+                        <button type="submit">+</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Sanctuary Journal Archive with Live Search -->
+            <section class="journal-section">
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+                        <div>
+                            <h3>📝 Sanctuary Reflections & Journal</h3>
+                            <p class="card-subtitle" style="margin-bottom: 0;">All your past daily notes and calendar reflections archived.</p>
+                        </div>
+                        <input type="text" id="journal-search" class="search-input-pill" style="max-width: 250px; margin-bottom: 0;" placeholder="🔍 Search reflections..." oninput="filterJournals(this.value)">
+                    </div>
+
+                    <div class="journal-grid" id="journal-entries-grid">
+                        {% for j in journals %}
+                            <div class="journal-entry-card" data-text="{{ j['journal_entry'] | lower }} {{ j['entry_date'] }}">
+                                <div class="journal-entry-header">
+                                    <span class="journal-date">📅 {{ j['entry_date'] }}</span>
+                                    {% if j['mood'] %}
+                                        <span class="tag-pill">{{ j['mood'] }}</span>
+                                    {% endif %}
+                                </div>
+                                <p class="journal-text">{{ j['journal_entry'] }}</p>
+                            </div>
+                        {% else %}
+                            <p class="empty-notice">No journal entries written yet. Click any day on the home calendar to write your first reflection!</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        function toggleEditProfile() {
+            const displaySec = document.getElementById('about-display-section');
+            const editSec = document.getElementById('about-edit-section');
+            if (displaySec.style.display === 'none') {
+                displaySec.style.display = 'flex';
+                editSec.style.display = 'none';
+            } else {
+                displaySec.style.display = 'none';
+                editSec.style.display = 'flex';
+            }
+        }
+
+        function toggleBucket(id) {
+            fetch(`/toggle-bucket/${id}`, { method: 'POST' }).then(() => location.reload());
+        }
+
+        function deleteBucketItem(id) {
+            if (confirm("Remove this dream from your bucket list?")) {
+                fetch(`/delete-bucket-item/${id}`, { method: 'POST' }).then(() => location.reload());
+            }
+        }
+
+        // Real-time Reflection & Note Filter
+        function filterJournals(query) {
+            const term = query.toLowerCase().trim();
+            const cards = document.querySelectorAll('#journal-entries-grid .journal-entry-card');
+            cards.forEach(card => {
+                const text = card.getAttribute('data-text') || '';
+                card.style.display = text.includes(term) ? 'block' : 'none';
+            });
+        }
+    </script>
+</body>
+</html>

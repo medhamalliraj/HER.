@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HER. — My Aesthetics</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar Navigation (No Music Player, No Log Out) -->
+        <aside class="sidebar">
+            <h1 class="brand-logo">HER. <span>🎀</span></h1>
+            <nav class="nav-links">
+                <a href="{{ url_for('home') }}">🏠 Home</a>
+                <a href="{{ url_for('myspace') }}">💗 My Space</a>
+                <a href="{{ url_for('tracker') }}">📊 Tracker</a>
+                <a href="{{ url_for('aesthetics') }}" class="active">✨ My Aesthetics</a>
+            </nav>
+
+            <div class="nav-footer">
+                <a href="{{ url_for('export_backup') }}" class="export-vault-link">💾 Backup Vault (.md)</a>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="header-card">
+                <div>
+                    <h2>My Aesthetics ✨</h2>
+                    <p class="date-str">The dreams, places, skills, and life I am creating.</p>
+                </div>
+            </header>
+
+            <div class="dashboard-grid">
+                <!-- ✈️ Places to Visit -->
+                <div class="card places-card">
+                    <h3>✈️ Places to Visit</h3>
+                    <p class="card-subtitle">Wanderlust collection & dream escapes.</p>
+
+                    <div class="places-list">
+                        {% for p in places %}
+                            <div class="place-item">
+                                <div>
+                                    <p class="place-name">{{ p['title'] }}</p>
+                                    <p class="place-meta">{{ p['subtitle'] }}</p>
+                                </div>
+                                <span class="tag-pill">Dream Spot 🌸</span>
+                            </div>
+                        {% else %}
+                            <p class="empty-notice">No travel destinations added yet.</p>
+                        {% endfor %}
+                    </div>
+
+                    <form action="{{ url_for('add_aesthetic_item') }}" method="POST" class="aesthetic-form">
+                        <input type="hidden" name="category" value="places">
+                        <input type="text" name="title" placeholder="Place (e.g. Kyoto 🇯🇵, Paris 🇫🇷)" required>
+                        <input type="text" name="subtitle" placeholder="Notes / Budget (e.g. ₹1,20,000)">
+                        <button type="submit">+ Add Destination</button>
+                    </form>
+                </div>
+
+                <!-- 🛍️ Wishlist & Savings (Rupee-based) -->
+                <div class="card wishlist-card">
+                    <h3>🛍️ Wishlist & Savings</h3>
+                    <p class="card-subtitle">Track the exact money saved towards your wishlist items.</p>
+
+                    <div class="wishlist-items">
+                        {% for w in wishlist %}
+                            {% set total_val = w['subtitle']|float if w['subtitle'] else 0 %}
+                            {% set saved_val = w['extra_meta']|float if w['extra_meta'] else 0 %}
+                            <div class="wish-item">
+                                <div class="wish-header">
+                                    <span class="wish-title">{{ w['title'] }}</span>
+                                    <span class="wish-price">₹{{ w['subtitle'] }}</span>
+                                </div>
+
+                                <div class="progress-bar-container">
+                                    <div class="progress-bar-fill" style="width: {{ w['progress'] }}%;"></div>
+                                </div>
+
+                                <div class="wish-stats-row">
+                                    <span class="progress-text"><strong>{{ w['progress'] }}%</strong> (₹{{ "%.0f"|format(saved_val) }} of ₹{{ "%.0f"|format(total_val) }})</span>
+                                    {% if w['image_path'] %}
+                                        <a href="{{ w['image_path'] }}" target="_blank" class="item-link-btn">🔗 View Item</a>
+                                    {% endif %}
+                                </div>
+
+                                <div class="quick-money-updater">
+                                    <input type="number" step="50" min="0" max="{{ total_val }}" id="saved-input-{{ w['id'] }}" value="{{ saved_val }}" placeholder="₹ Saved">
+                                    <button type="button" class="mini-save-btn" onclick="saveWishlistMoney({{ w['id'] }})">Update ₹</button>
+                                </div>
+                            </div>
+                        {% else %}
+                            <p class="empty-notice">No wishlist items added yet.</p>
+                        {% endfor %}
+                    </div>
+
+                    <form action="{{ url_for('add_aesthetic_item') }}" method="POST" class="aesthetic-form">
+                        <input type="hidden" name="category" value="wishlist">
+                        <input type="text" name="title" placeholder="Item name (e.g. Aesthetic Pouch)" required>
+                        <input type="number" name="subtitle" placeholder="Total Price in ₹ (e.g. 300)" required>
+                        <input type="number" name="saved_amount" placeholder="How much money do you already have? in ₹ (e.g. 150)">
+                        <input type="url" name="product_link" placeholder="Product purchase link (https://...)">
+                        <button type="submit">+ Add to Wishlist</button>
+                    </form>
+                </div>
+
+                <!-- 📚 Skills to Learn (Arrow Key Navigation) -->
+                <div class="card skills-card">
+                    <h3>📚 Skills to Learn</h3>
+                    <p class="card-subtitle">Click a slider and use your keyboard arrow keys (← / →) to adjust.</p>
+
+                    <div class="skills-list">
+                        {% for s in skills %}
+                            <div class="skill-item">
+                                <div class="skill-header">
+                                    <span class="skill-name">{{ s['title'] }}</span>
+                                    <span class="skill-pct" id="skill-pct-{{ s['id'] }}">{{ s['progress'] }}%</span>
+                                </div>
+                                <div class="progress-bar-container">
+                                    <div class="progress-bar-fill" id="skill-fill-{{ s['id'] }}" style="width: {{ s['progress'] }}%;"></div>
+                                </div>
+                                <div class="skill-slider-box">
+                                    <input 
+                                        type="range" 
+                                        min="0" 
+                                        max="100" 
+                                        step="1"
+                                        tabindex="0"
+                                        value="{{ s['progress'] }}" 
+                                        oninput="onSkillSliderInput({{ s['id'] }}, this.value)"
+                                        onchange="updateSkill({{ s['id'] }}, this.value)"
+                                        onkeydown="handleSkillKeyNav(event, {{ s['id'] }}, this)">
+                                </div>
+                            </div>
+                        {% else %}
+                            <p class="empty-notice">No skills added yet.</p>
+                        {% endfor %}
+                    </div>
+
+                    <form action="{{ url_for('add_aesthetic_item') }}" method="POST" class="aesthetic-form">
+                        <input type="hidden" name="category" value="skills">
+                        <input type="text" name="title" placeholder="Skill name (e.g. Sign Language, Web Dev)" required>
+                        <input type="number" name="progress" min="0" max="100" placeholder="Starting Progress % (e.g. 20)">
+                        <button type="submit">+ Add Skill</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- 🖼️ Vision Board Section (Upload from Device + Delete) -->
+            <section class="vision-board-section">
+                <div class="card vision-card">
+                    <h3>🖼️ Vision Board & Dreams</h3>
+                    <p class="card-subtitle">Pin pictures directly from your phone/PC to build your visual sanctuary.</p>
+
+                    <form action="{{ url_for('add_aesthetic_item') }}" method="POST" enctype="multipart/form-data" class="vision-form">
+                        <input type="hidden" name="category" value="vision">
+                        <input type="text" name="title" placeholder="Vision title or quote..." required>
+                        
+                        <label class="custom-file-upload">
+                            📁 Choose Photo
+                            <input type="file" name="image_file" accept="image/*" required onchange="previewUploadName(this)">
+                        </label>
+                        <span id="file-name-preview" class="file-name-preview"></span>
+                        
+                        <button type="submit">+ Pin to Board</button>
+                    </form>
+
+                    <div id="live-url-preview-box" class="live-url-preview" style="display: none;">
+                        <img id="live-preview-img" src="" alt="Preview">
+                        <span>✨ Photo Selected Ready to Pin</span>
+                    </div>
+
+                    <div class="vision-grid">
+                        {% for v in vision_items %}
+                            <div class="vision-pin">
+                                <button type="button" class="delete-pin-btn" onclick="deleteVisionItem({{ v['id'] }})" title="Delete Pin">&times;</button>
+                                
+                                {% if v['image_path'] %}
+                                    <div class="vision-img-wrapper">
+                                        <img src="{{ v['image_path'] }}" alt="{{ v['title'] }}">
+                                    </div>
+                                {% else %}
+                                    <div class="vision-placeholder">🌸 {{ v['title'] }}</div>
+                                {% endif %}
+                                <p class="vision-pin-text">{{ v['title'] }}</p>
+                            </div>
+                        {% else %}
+                            <p class="empty-notice">Your vision board is empty. Choose a photo from your device above to pin your first dream!</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        function onSkillSliderInput(skillId, val) {
+            const pctLabel = document.getElementById(`skill-pct-${skillId}`);
+            const barFill = document.getElementById(`skill-fill-${skillId}`);
+            if (pctLabel) pctLabel.textContent = `${val}%`;
+            if (barFill) barFill.style.width = `${val}%`;
+        }
+
+        function updateSkill(skillId, value) {
+            fetch(`/update-skill-progress/${skillId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ progress: parseInt(value, 10) })
+            });
+        }
+
+        let skillSaveTimeout = null;
+        function handleSkillKeyNav(e, skillId, inputElement) {
+            if (['ArrowLeft', 'ArrowDown', 'ArrowRight', 'ArrowUp'].includes(e.key)) {
+                e.preventDefault();
+                const step = e.shiftKey ? 5 : 1;
+                let currentVal = parseInt(inputElement.value, 10) || 0;
+
+                if (e.key === 'ArrowRight' || e.key === 'ArrowUp') currentVal = Math.min(100, currentVal + step);
+                else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') currentVal = Math.max(0, currentVal - step);
+
+                inputElement.value = currentVal;
+                onSkillSliderInput(skillId, currentVal);
+
+                clearTimeout(skillSaveTimeout);
+                skillSaveTimeout = setTimeout(() => {
+                    updateSkill(skillId, currentVal);
+                }, 300);
+            }
+        }
+
+        function saveWishlistMoney(itemId) {
+            const val = document.getElementById(`saved-input-${itemId}`).value;
+            fetch(`/update-wishlist-money/${itemId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ saved_amount: val })
+            }).then(() => location.reload());
+        }
+
+        function deleteVisionItem(itemId) {
+            if (confirm("Remove this dream from your vision board? ♡")) {
+                fetch(`/delete-vision-item/${itemId}`, { method: 'POST' }).then(() => location.reload());
+            }
+        }
+
+        function previewUploadName(input) {
+            const preview = document.getElementById('file-name-preview');
+            const liveBox = document.getElementById('live-url-preview-box');
+            const previewImg = document.getElementById('live-preview-img');
+
+            if (input.files && input.files[0]) {
+                preview.textContent = input.files[0].name;
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    previewImg.src = e.target.result;
+                    liveBox.style.display = 'flex';
+                };
+                reader.readAsDataURL(input.files[0]);
+            } else {
+                preview.textContent = '';
+                liveBox.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>

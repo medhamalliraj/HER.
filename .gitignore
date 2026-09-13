@@ -1,0 +1,6 @@
+.env
+her.db
+__pycache__/
+*.pyc
+venv/
+static/uploads/
